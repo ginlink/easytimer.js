@@ -2,8 +2,8 @@
  * @class Timer
  */
 
-import TimeCounter from './timeCounter';
-import EventEmitter from './eventEmitter';
+import TimeCounter from "./timeCounter";
+import EventEmitter from "./eventEmitter";
 
 /*
  * General functions, variables and constants
@@ -19,36 +19,30 @@ const MINUTES_POSITION = 2;
 const HOURS_POSITION = 3;
 const DAYS_POSITION = 4;
 
-const SECOND_TENTHS = 'secondTenths';
-const SECONDS = 'seconds';
-const MINUTES = 'minutes';
-const HOURS = 'hours';
-const DAYS = 'days';
+const SECOND_TENTHS = "secondTenths";
+const SECONDS = "seconds";
+const MINUTES = "minutes";
+const HOURS = "hours";
+const DAYS = "days";
 
-const VALID_INPUT_VALUES = [
-  SECOND_TENTHS,
-  SECONDS,
-  MINUTES,
-  HOURS,
-  DAYS
-];
+const VALID_INPUT_VALUES = [SECOND_TENTHS, SECONDS, MINUTES, HOURS, DAYS];
 
 const unitsInMilliseconds = {
   secondTenths: 100,
   seconds: 1000,
   minutes: 60000,
   hours: 3600000,
-  days: 86400000
+  days: 86400000,
 };
 
 const groupedUnits = {
   secondTenths: SECOND_TENTHS_PER_SECOND,
   seconds: SECONDS_PER_MINUTE,
   minutes: MINUTES_PER_HOUR,
-  hours: HOURS_PER_DAY
+  hours: HOURS_PER_DAY,
 };
 
-function mod (number, module) {
+function mod(number, module) {
   return ((number % module) + module) % module;
 }
 
@@ -57,10 +51,10 @@ function mod (number, module) {
  * Can update time values with different time intervals: tenth of seconds,
  * seconds, minutes and hours.]
  */
-function Timer (defaultParams = {}) {
+function Timer(defaultParams = {}) {
   /*
-  * PRIVATE variables and Functions
-  */
+   * PRIVATE variables and Functions
+   */
   const counters = new TimeCounter();
   let totalCounters = new TimeCounter();
 
@@ -80,65 +74,76 @@ function Timer (defaultParams = {}) {
   let targetDate;
   const eventData = {
     detail: {
-      timer: this
-    }
+      timer: this,
+    },
   };
 
   setParams(defaultParams);
 
-  function updateCounters (precision, roundedValue) {
-    const unitsPerGroup = groupedUnits[precision];
+  function updateCounters(precision, roundedValue) {
+    var unitsPerGroup = groupedUnits[precision];
     totalCounters[precision] = roundedValue;
 
-    if (precision === DAYS) {
+    if (precision === DAYS && defaultParams.mode === "hour") {
+      counters[precision] = Math.abs(0);
+    } else if (precision === DAYS) {
       counters[precision] = Math.abs(roundedValue);
+    } else if (precision === HOURS && defaultParams.mode === "hour") {
+      counters[precision] = Math.abs(
+        Math.floor(Math.floor(roundedValue / 24) / 2) * 24 + (roundedValue % 24)
+      );
     } else if (roundedValue >= 0) {
       counters[precision] = mod(roundedValue, unitsPerGroup);
     } else {
-      counters[precision] = mod(unitsPerGroup - mod(roundedValue, unitsPerGroup), unitsPerGroup);
+      counters[precision] = mod(
+        unitsPerGroup - mod(roundedValue, unitsPerGroup)
+      );
     }
   }
 
-  function updateDays (value) {
+  function updateDays(value) {
     return updateUnitByPrecision(value, DAYS);
   }
 
-  function updateHours (value) {
+  function updateHours(value) {
     return updateUnitByPrecision(value, HOURS);
   }
 
-  function updateMinutes (value) {
+  function updateMinutes(value) {
     return updateUnitByPrecision(value, MINUTES);
   }
 
-  function updateSeconds (value) {
+  function updateSeconds(value) {
     return updateUnitByPrecision(value, SECONDS);
   }
 
-  function updateSecondTenths (value) {
+  function updateSecondTenths(value) {
     return updateUnitByPrecision(value, SECOND_TENTHS);
   }
 
-  function updateUnitByPrecision (value, precision) {
+  function updateUnitByPrecision(value, precision) {
     const previousValue = totalCounters[precision];
-    updateCounters(precision, calculateIntegerUnitQuotient(value, unitsInMilliseconds[precision]));
+    updateCounters(
+      precision,
+      calculateIntegerUnitQuotient(value, unitsInMilliseconds[precision])
+    );
 
     return totalCounters[precision] !== previousValue;
   }
 
-  function stopTimerAndResetCounters () {
+  function stopTimerAndResetCounters() {
     stopTimer();
     resetCounters();
   }
 
-  function stopTimer () {
+  function stopTimer() {
     clearInterval(intervalId);
     intervalId = undefined;
     running = false;
     paused = false;
   }
 
-  function setParamsAndStartTimer (params) {
+  function setParamsAndStartTimer(params) {
     if (!isPaused()) {
       setParams(params);
     } else {
@@ -149,29 +154,29 @@ function Timer (defaultParams = {}) {
     startTimer();
   }
 
-  function startTimer () {
+  function startTimer() {
     const interval = unitsInMilliseconds[precision];
 
     if (isTargetAchieved(roundTimestamp(Date.now()))) {
       return;
     }
 
-    intervalId = setInterval(
-      updateTimerAndDispatchEvents,
-      interval
-    );
+    intervalId = setInterval(updateTimerAndDispatchEvents, interval);
 
     running = true;
     paused = false;
   }
 
-  function calculateStartingDate () {
-    return roundTimestamp(Date.now()) -
-      totalCounters.secondTenths * unitsInMilliseconds[SECOND_TENTHS] *
-      timerTypeFactor;
+  function calculateStartingDate() {
+    return (
+      roundTimestamp(Date.now()) -
+      totalCounters.secondTenths *
+        unitsInMilliseconds[SECOND_TENTHS] *
+        timerTypeFactor
+    );
   }
 
-  function updateTimerAndDispatchEvents () {
+  function updateTimerAndDispatchEvents() {
     const currentTime = roundTimestamp(Date.now());
     const valuesUpdated = updateTimer();
 
@@ -180,12 +185,15 @@ function Timer (defaultParams = {}) {
     customCallback(eventData.detail.timer);
     if (isTargetAchieved(currentTime)) {
       stop();
-      dispatchEvent('targetAchieved', eventData);
+      dispatchEvent("targetAchieved", eventData);
     }
   }
 
-  function updateTimer (currentTime = roundTimestamp(Date.now())) {
-    const elapsedTime = timerTypeFactor > 0 ? (currentTime - startingDate) : (startingDate - currentTime);
+  function updateTimer(currentTime = roundTimestamp(Date.now())) {
+    const elapsedTime =
+      timerTypeFactor > 0
+        ? currentTime - startingDate
+        : startingDate - currentTime;
     const valuesUpdated = {};
 
     valuesUpdated[SECOND_TENTHS] = updateSecondTenths(elapsedTime);
@@ -197,50 +205,55 @@ function Timer (defaultParams = {}) {
     return valuesUpdated;
   }
 
-  function roundTimestamp (timestamp) {
-    return Math.floor(timestamp / unitsInMilliseconds[precision]) * unitsInMilliseconds[precision];
+  function roundTimestamp(timestamp) {
+    return (
+      Math.floor(timestamp / unitsInMilliseconds[precision]) *
+      unitsInMilliseconds[precision]
+    );
   }
 
-  function dispatchEvents (valuesUpdated) {
+  function dispatchEvents(valuesUpdated) {
     if (valuesUpdated[SECOND_TENTHS]) {
-      dispatchEvent('secondTenthsUpdated', eventData);
+      dispatchEvent("secondTenthsUpdated", eventData);
     }
     if (valuesUpdated[SECONDS]) {
-      dispatchEvent('secondsUpdated', eventData);
+      dispatchEvent("secondsUpdated", eventData);
     }
     if (valuesUpdated[MINUTES]) {
-      dispatchEvent('minutesUpdated', eventData);
+      dispatchEvent("minutesUpdated", eventData);
     }
     if (valuesUpdated[HOURS]) {
-      dispatchEvent('hoursUpdated', eventData);
+      dispatchEvent("hoursUpdated", eventData);
     }
     if (valuesUpdated[DAYS]) {
-      dispatchEvent('daysUpdated', eventData);
+      dispatchEvent("daysUpdated", eventData);
     }
   }
 
-  function isTargetAchieved (currentDate) {
-    return targetValues instanceof Array &&
-      currentDate >= targetDate;
+  function isTargetAchieved(currentDate) {
+    return targetValues instanceof Array && currentDate >= targetDate;
   }
 
-  function resetCounters () {
+  function resetCounters() {
     counters.reset();
     totalCounters.reset();
   }
 
-  function setParams (params) {
+  function setParams(params) {
     params = params || {};
 
     precision = checkPrecision(params.precision);
 
-    customCallback = typeof params.callback === 'function' ? params.callback : function () {};
+    customCallback =
+      typeof params.callback === "function" ? params.callback : function () {};
 
     countdown = params.countdown === true;
 
+    params.mode = params.mode ? params.mode : "day";
+
     timerTypeFactor = countdown === true ? -1 : 1;
 
-    if (typeof params.startValues === 'object') {
+    if (typeof params.startValues === "object") {
       setStartValues(params.startValues);
     } else {
       startValues = null;
@@ -250,7 +263,7 @@ function Timer (defaultParams = {}) {
 
     updateTimer();
 
-    if (typeof params.target === 'object') {
+    if (typeof params.target === "object") {
       targetValues = setTarget(params.target);
     } else if (countdown) {
       params.target = { seconds: 0 };
@@ -262,45 +275,51 @@ function Timer (defaultParams = {}) {
     timerConfig = {
       precision: precision,
       callback: customCallback,
-      countdown: typeof params === 'object' && params.countdown === true,
+      countdown: typeof params === "object" && params.countdown === true,
       target: targetValues,
-      startValues: startValues
+      startValues: startValues,
     };
 
     currentParams = params;
   }
 
-  function checkPrecision (precision) {
-    precision = typeof precision === 'string' ? precision : SECONDS;
+  function checkPrecision(precision) {
+    precision = typeof precision === "string" ? precision : SECONDS;
     if (!isValidInputValue(precision)) {
-      throw new Error(`Error in precision parameter: ${precision} is not a valid value`);
+      throw new Error(
+        `Error in precision parameter: ${precision} is not a valid value`
+      );
     }
 
     return precision;
   }
 
-  function isValidInputValue (value) {
+  function isValidInputValue(value) {
     return VALID_INPUT_VALUES.indexOf(value) >= 0;
   }
 
-  function configInputValues (inputValues) {
+  function configInputValues(inputValues) {
     let values;
-    if (typeof inputValues === 'object') {
+    if (typeof inputValues === "object") {
       if (inputValues instanceof Array) {
         if (inputValues.length !== 5) {
-          throw new Error('Array size not valid');
+          throw new Error("Array size not valid");
         }
         values = inputValues;
       } else {
         for (const value in inputValues) {
           if (VALID_INPUT_VALUES.indexOf(value) < 0) {
-            throw new Error(`Error in startValues or target parameter: ${value} is not a valid input value`);
+            throw new Error(
+              `Error in startValues or target parameter: ${value} is not a valid input value`
+            );
           }
         }
         values = [
-          inputValues.secondTenths || 0, inputValues.seconds || 0,
-          inputValues.minutes || 0, inputValues.hours || 0,
-          inputValues.days || 0
+          inputValues.secondTenths || 0,
+          inputValues.seconds || 0,
+          inputValues.minutes || 0,
+          inputValues.hours || 0,
+          inputValues.days || 0,
         ];
       }
     }
@@ -308,42 +327,57 @@ function Timer (defaultParams = {}) {
     values = values.map((value) => parseInt(value, 10));
 
     const secondTenths = values[SECOND_TENTHS_POSITION];
-    const seconds = values[SECONDS_POSITION] + calculateIntegerUnitQuotient(secondTenths, SECOND_TENTHS_PER_SECOND);
-    const minutes = values[MINUTES_POSITION] + calculateIntegerUnitQuotient(seconds, SECONDS_PER_MINUTE);
-    const hours = values[HOURS_POSITION] + calculateIntegerUnitQuotient(minutes, MINUTES_PER_HOUR);
-    const days = values[DAYS_POSITION] + calculateIntegerUnitQuotient(hours, HOURS_PER_DAY);
+    const seconds =
+      values[SECONDS_POSITION] +
+      calculateIntegerUnitQuotient(secondTenths, SECOND_TENTHS_PER_SECOND);
+    const minutes =
+      values[MINUTES_POSITION] +
+      calculateIntegerUnitQuotient(seconds, SECONDS_PER_MINUTE);
+    const hours =
+      values[HOURS_POSITION] +
+      calculateIntegerUnitQuotient(minutes, MINUTES_PER_HOUR);
+    const days =
+      values[DAYS_POSITION] +
+      calculateIntegerUnitQuotient(hours, HOURS_PER_DAY);
 
-    values[SECOND_TENTHS_POSITION] = secondTenths % SECOND_TENTHS_PER_SECOND;
-    values[SECONDS_POSITION] = seconds % SECONDS_PER_MINUTE;
-    values[MINUTES_POSITION] = minutes % MINUTES_PER_HOUR;
-    values[HOURS_POSITION] = hours % HOURS_PER_DAY;
+    // values[SECOND_TENTHS_POSITION] = secondTenths % SECOND_TENTHS_PER_SECOND;
+    // values[SECONDS_POSITION] = seconds % SECONDS_PER_MINUTE;
+    // values[MINUTES_POSITION] = minutes % MINUTES_PER_HOUR;
+    // values[HOURS_POSITION] = hours % HOURS_PER_DAY;
+    // values[DAYS_POSITION] = days;
+
+    values[SECOND_TENTHS_POSITION] = secondTenths;
+    values[SECONDS_POSITION] = seconds;
+    values[MINUTES_POSITION] = minutes;
+    values[HOURS_POSITION] = hours;
     values[DAYS_POSITION] = days;
 
     return values;
   }
 
-  function calculateIntegerUnitQuotient (unit, divisor) {
+  function calculateIntegerUnitQuotient(unit, divisor) {
     const quotient = unit / divisor;
 
     return quotient < 0 ? Math.ceil(quotient) : Math.floor(quotient);
   }
 
-  function setTarget (inputTarget) {
+  function setTarget(inputTarget) {
     if (!inputTarget) {
       return;
     }
 
     targetValues = configInputValues(inputTarget);
     const targetCounter = calculateTotalCounterFromValues(targetValues);
-    targetDate = startingDate +
+    targetDate =
+      startingDate +
       targetCounter.secondTenths *
-      unitsInMilliseconds[SECOND_TENTHS] *
-      timerTypeFactor;
+        unitsInMilliseconds[SECOND_TENTHS] *
+        timerTypeFactor;
 
     return targetValues;
   }
 
-  function setStartValues (inputStartValues) {
+  function setStartValues(inputStartValues) {
     startValues = configInputValues(inputStartValues);
     counters.secondTenths = startValues[SECOND_TENTHS_POSITION];
     counters.seconds = startValues[SECONDS_POSITION];
@@ -354,14 +388,17 @@ function Timer (defaultParams = {}) {
     totalCounters = calculateTotalCounterFromValues(startValues, totalCounters);
   }
 
-  function calculateTotalCounterFromValues (values, outputCounter) {
+  function calculateTotalCounterFromValues(values, outputCounter) {
     const total = outputCounter || {};
 
     total.days = values[DAYS_POSITION];
     total.hours = total.days * HOURS_PER_DAY + values[HOURS_POSITION];
     total.minutes = total.hours * MINUTES_PER_HOUR + values[MINUTES_POSITION];
-    total.seconds = total.minutes * SECONDS_PER_MINUTE + values[SECONDS_POSITION];
-    total.secondTenths = total.seconds * SECOND_TENTHS_PER_SECOND + values[[SECOND_TENTHS_POSITION]];
+    total.seconds =
+      total.minutes * SECONDS_PER_MINUTE + values[SECONDS_POSITION];
+    total.secondTenths =
+      total.seconds * SECOND_TENTHS_PER_SECOND +
+      values[[SECOND_TENTHS_POSITION]];
 
     return total;
   }
@@ -373,28 +410,28 @@ function Timer (defaultParams = {}) {
   /**
    * [stop stops the timer and resets the counters. Dispatch stopped event]
    */
-  function stop () {
+  function stop() {
     stopTimerAndResetCounters();
-    dispatchEvent('stopped', eventData);
+    dispatchEvent("stopped", eventData);
   }
 
   /**
    * [stop stops and starts the timer. Dispatch stopped event]
    */
-  function reset () {
+  function reset() {
     stopTimerAndResetCounters();
     setParamsAndStartTimer(currentParams);
-    dispatchEvent('reset', eventData);
+    dispatchEvent("reset", eventData);
   }
 
   /**
    * [start starts the timer configured by the params object. Dispatch started event]
    * @param  {object} params [Configuration parameters]
    */
-  function start (params = {}) {
+  function start(params = {}) {
     params = {
       ...defaultParams,
-      ...params
+      ...params,
     };
 
     if (isRunning()) {
@@ -402,7 +439,7 @@ function Timer (defaultParams = {}) {
     }
 
     setParamsAndStartTimer(params);
-    dispatchEvent('started', eventData);
+    dispatchEvent("started", eventData);
   }
 
   /**
@@ -410,10 +447,10 @@ function Timer (defaultParams = {}) {
    * Dispatch paused event]
    * @return {type} [description]
    */
-  function pause () {
+  function pause() {
     stopTimer();
     paused = true;
-    dispatchEvent('paused', eventData);
+    dispatchEvent("paused", eventData);
   }
 
   /**
@@ -421,7 +458,7 @@ function Timer (defaultParams = {}) {
    * @param {string} eventType      [event to listen]
    * @param {function} listener   [the event listener function]
    */
-  function addEventListener (eventType, listener) {
+  function addEventListener(eventType, listener) {
     eventEmitter.on(eventType, listener);
   }
 
@@ -430,7 +467,7 @@ function Timer (defaultParams = {}) {
    * @param  {string} eventType    [event to remove listener]
    * @param  {function} listener [listener to remove]
    */
-  function removeEventListener (eventType, listener) {
+  function removeEventListener(eventType, listener) {
     eventEmitter.removeListener(eventType, listener);
   }
 
@@ -438,7 +475,7 @@ function Timer (defaultParams = {}) {
    * [removeAllEventListeners Removes all events listeners for the given type, no type to remove all types]
    * @param  {string} [eventType]  [event to remove listener]
    */
-  function removeAllEventListeners (eventType) {
+  function removeAllEventListeners(eventType) {
     eventEmitter.removeAllListeners(eventType);
   }
 
@@ -447,7 +484,7 @@ function Timer (defaultParams = {}) {
    * @param  {string} eventType [event to dispatch]
    * @param data
    */
-  function dispatchEvent (eventType, data) {
+  function dispatchEvent(eventType, data) {
     eventEmitter.emit(eventType, data);
   }
 
@@ -455,7 +492,7 @@ function Timer (defaultParams = {}) {
    * [isRunning return true if the timer is running]
    * @return {Boolean}
    */
-  function isRunning () {
+  function isRunning() {
     return running;
   }
 
@@ -463,7 +500,7 @@ function Timer (defaultParams = {}) {
    * [isPaused returns true if the timer is paused]
    * @return {Boolean}
    */
-  function isPaused () {
+  function isPaused() {
     return paused;
   }
 
@@ -471,7 +508,7 @@ function Timer (defaultParams = {}) {
    * [getTimeValues returns the counter with the current timer values]
    * @return {TimeCounter}
    */
-  function getTimeValues () {
+  function getTimeValues() {
     return counters;
   }
 
@@ -479,7 +516,7 @@ function Timer (defaultParams = {}) {
    * [getTotalTimeValues returns the counter with the current timer total values]
    * @return {TimeCounter}
    */
-  function getTotalTimeValues () {
+  function getTotalTimeValues() {
     return totalCounters;
   }
 
@@ -487,7 +524,7 @@ function Timer (defaultParams = {}) {
    * [getConfig returns the configuration parameters]
    * @return {type}
    */
-  function getConfig () {
+  function getConfig() {
     return timerConfig;
   }
 
@@ -495,7 +532,7 @@ function Timer (defaultParams = {}) {
    * Public API
    * Definition of Timer instance public functions
    */
-  if (typeof this !== 'undefined') {
+  if (typeof this !== "undefined") {
     this.start = start;
 
     this.pause = pause;

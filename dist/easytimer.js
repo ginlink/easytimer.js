@@ -1,6 +1,6 @@
 /**
  * easytimer.js
- * Generated: 2022-08-23
+ * Generated: 2022-10-11
  * Version: 4.5.4
  */
 
@@ -186,11 +186,11 @@
   var MINUTES_POSITION = 2;
   var HOURS_POSITION = 3;
   var DAYS_POSITION = 4;
-  var SECOND_TENTHS = 'secondTenths';
-  var SECONDS = 'seconds';
-  var MINUTES = 'minutes';
-  var HOURS = 'hours';
-  var DAYS = 'days';
+  var SECOND_TENTHS = "secondTenths";
+  var SECONDS = "seconds";
+  var MINUTES = "minutes";
+  var HOURS = "hours";
+  var DAYS = "days";
   var VALID_INPUT_VALUES = [SECOND_TENTHS, SECONDS, MINUTES, HOURS, DAYS];
   var unitsInMilliseconds = {
     secondTenths: 100,
@@ -220,8 +220,8 @@
     var defaultParams = arguments.length > 0 && arguments[0] !== undefined ? arguments[0] : {};
 
     /*
-    * PRIVATE variables and Functions
-    */
+     * PRIVATE variables and Functions
+     */
     var counters = new TimeCounter();
     var totalCounters = new TimeCounter();
     var intervalId;
@@ -249,12 +249,16 @@
       var unitsPerGroup = groupedUnits[precision];
       totalCounters[precision] = roundedValue;
 
-      if (precision === DAYS) {
+      if (precision === DAYS && defaultParams.mode === "hour") {
+        counters[precision] = Math.abs(0);
+      } else if (precision === DAYS) {
         counters[precision] = Math.abs(roundedValue);
+      } else if (precision === HOURS && defaultParams.mode === "hour") {
+        counters[precision] = Math.abs(Math.floor(Math.floor(roundedValue / 24) / 2) * 24 + roundedValue % 24);
       } else if (roundedValue >= 0) {
         counters[precision] = mod(roundedValue, unitsPerGroup);
       } else {
-        counters[precision] = mod(unitsPerGroup - mod(roundedValue, unitsPerGroup), unitsPerGroup);
+        counters[precision] = mod(unitsPerGroup - mod(roundedValue, unitsPerGroup));
       }
     }
 
@@ -331,7 +335,7 @@
 
       if (isTargetAchieved(currentTime)) {
         stop();
-        dispatchEvent('targetAchieved', eventData);
+        dispatchEvent("targetAchieved", eventData);
       }
     }
 
@@ -353,23 +357,23 @@
 
     function dispatchEvents(valuesUpdated) {
       if (valuesUpdated[SECOND_TENTHS]) {
-        dispatchEvent('secondTenthsUpdated', eventData);
+        dispatchEvent("secondTenthsUpdated", eventData);
       }
 
       if (valuesUpdated[SECONDS]) {
-        dispatchEvent('secondsUpdated', eventData);
+        dispatchEvent("secondsUpdated", eventData);
       }
 
       if (valuesUpdated[MINUTES]) {
-        dispatchEvent('minutesUpdated', eventData);
+        dispatchEvent("minutesUpdated", eventData);
       }
 
       if (valuesUpdated[HOURS]) {
-        dispatchEvent('hoursUpdated', eventData);
+        dispatchEvent("hoursUpdated", eventData);
       }
 
       if (valuesUpdated[DAYS]) {
-        dispatchEvent('daysUpdated', eventData);
+        dispatchEvent("daysUpdated", eventData);
       }
     }
 
@@ -385,11 +389,12 @@
     function setParams(params) {
       params = params || {};
       precision = checkPrecision(params.precision);
-      customCallback = typeof params.callback === 'function' ? params.callback : function () {};
+      customCallback = typeof params.callback === "function" ? params.callback : function () {};
       countdown = params.countdown === true;
+      params.mode = params.mode ? params.mode : "day";
       timerTypeFactor = countdown === true ? -1 : 1;
 
-      if (_typeof(params.startValues) === 'object') {
+      if (_typeof(params.startValues) === "object") {
         setStartValues(params.startValues);
       } else {
         startValues = null;
@@ -398,7 +403,7 @@
       startingDate = calculateStartingDate();
       updateTimer();
 
-      if (_typeof(params.target) === 'object') {
+      if (_typeof(params.target) === "object") {
         targetValues = setTarget(params.target);
       } else if (countdown) {
         params.target = {
@@ -412,7 +417,7 @@
       timerConfig = {
         precision: precision,
         callback: customCallback,
-        countdown: _typeof(params) === 'object' && params.countdown === true,
+        countdown: _typeof(params) === "object" && params.countdown === true,
         target: targetValues,
         startValues: startValues
       };
@@ -420,7 +425,7 @@
     }
 
     function checkPrecision(precision) {
-      precision = typeof precision === 'string' ? precision : SECONDS;
+      precision = typeof precision === "string" ? precision : SECONDS;
 
       if (!isValidInputValue(precision)) {
         throw new Error("Error in precision parameter: ".concat(precision, " is not a valid value"));
@@ -436,10 +441,10 @@
     function configInputValues(inputValues) {
       var values;
 
-      if (_typeof(inputValues) === 'object') {
+      if (_typeof(inputValues) === "object") {
         if (inputValues instanceof Array) {
           if (inputValues.length !== 5) {
-            throw new Error('Array size not valid');
+            throw new Error("Array size not valid");
           }
 
           values = inputValues;
@@ -461,11 +466,16 @@
       var seconds = values[SECONDS_POSITION] + calculateIntegerUnitQuotient(secondTenths, SECOND_TENTHS_PER_SECOND);
       var minutes = values[MINUTES_POSITION] + calculateIntegerUnitQuotient(seconds, SECONDS_PER_MINUTE);
       var hours = values[HOURS_POSITION] + calculateIntegerUnitQuotient(minutes, MINUTES_PER_HOUR);
-      var days = values[DAYS_POSITION] + calculateIntegerUnitQuotient(hours, HOURS_PER_DAY);
-      values[SECOND_TENTHS_POSITION] = secondTenths % SECOND_TENTHS_PER_SECOND;
-      values[SECONDS_POSITION] = seconds % SECONDS_PER_MINUTE;
-      values[MINUTES_POSITION] = minutes % MINUTES_PER_HOUR;
-      values[HOURS_POSITION] = hours % HOURS_PER_DAY;
+      var days = values[DAYS_POSITION] + calculateIntegerUnitQuotient(hours, HOURS_PER_DAY); // values[SECOND_TENTHS_POSITION] = secondTenths % SECOND_TENTHS_PER_SECOND;
+      // values[SECONDS_POSITION] = seconds % SECONDS_PER_MINUTE;
+      // values[MINUTES_POSITION] = minutes % MINUTES_PER_HOUR;
+      // values[HOURS_POSITION] = hours % HOURS_PER_DAY;
+      // values[DAYS_POSITION] = days;
+
+      values[SECOND_TENTHS_POSITION] = secondTenths;
+      values[SECONDS_POSITION] = seconds;
+      values[MINUTES_POSITION] = minutes;
+      values[HOURS_POSITION] = hours;
       values[DAYS_POSITION] = days;
       return values;
     }
@@ -516,7 +526,7 @@
 
     function stop() {
       stopTimerAndResetCounters();
-      dispatchEvent('stopped', eventData);
+      dispatchEvent("stopped", eventData);
     }
     /**
      * [stop stops and starts the timer. Dispatch stopped event]
@@ -526,7 +536,7 @@
     function reset() {
       stopTimerAndResetCounters();
       setParamsAndStartTimer(currentParams);
-      dispatchEvent('reset', eventData);
+      dispatchEvent("reset", eventData);
     }
     /**
      * [start starts the timer configured by the params object. Dispatch started event]
@@ -543,7 +553,7 @@
       }
 
       setParamsAndStartTimer(params);
-      dispatchEvent('started', eventData);
+      dispatchEvent("started", eventData);
     }
     /**
      * [pause stops the timer without resetting the counters. The timer it can be restarted with start function.
@@ -555,7 +565,7 @@
     function pause() {
       stopTimer();
       paused = true;
-      dispatchEvent('paused', eventData);
+      dispatchEvent("paused", eventData);
     }
     /**
      * [addEventListener Adds event listener to the timer]
@@ -647,7 +657,7 @@
      */
 
 
-    if (typeof this !== 'undefined') {
+    if (typeof this !== "undefined") {
       this.start = start;
       this.pause = pause;
       this.stop = stop;
